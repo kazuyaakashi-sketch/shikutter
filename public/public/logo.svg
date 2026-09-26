@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 48" role="img" aria-labelledby="title desc">
+  <title id="title">シクッター</title>
+  <desc id="desc">シクッターのワードマーク</desc>
+  <g fill="none" fill-rule="evenodd">
+    <rect x="1" y="1" width="46" height="46" rx="13" fill="#1D9BF0"/>
+    <path d="M13.5 15.5h21v5.2h-21zm0 11.8h14.4c4.6 0 7.8 2.4 7.8 6.2 0 4.5-3.9 7-9.6 7H16v-5.1h10.4c2.2 0 3.5-.6 3.5-1.9 0-1.1-1.1-1.6-3.1-1.6H13.5z" fill="#fff"/>
+    <text x="59" y="34" fill="#0F1419" font-size="27" font-weight="800" font-family="Hiragino Sans, Noto Sans JP, Yu Gothic, sans-serif" letter-spacing="1">シクッター</text>
+  </g>
+</svg>
