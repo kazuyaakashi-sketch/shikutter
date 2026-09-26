@@ -26,10 +26,10 @@
 <a class="skip" href="#app">本文へ移動</a>
 <header class="hd" id="hd">
   <div class="hd-in">
-    <a class="brand" href="/" aria-label="シクッター（タイムラインへ）"><img src="/logo.svg" alt="シクッター" width="168" height="36"></a>
+    <a class="brand" href="/" aria-label="シクッター（タイムラインへ）"><img src="/logo-icon.png" alt="" width="36" height="36"><span class="brand-name">シクッター</span></a>
     <div class="hd-actions">
       <a class="btn hd-cta" href="/post" data-post-entry id="hd-cta">しくったを投稿</a>
-      <button class="menu-btn" type="button" id="menu-btn" aria-label="メニューを開く" aria-expanded="false" aria-controls="mobile-menu">•••</button>
+      <button class="menu-btn" type="button" id="menu-btn" aria-label="メニューを開く" aria-expanded="false" aria-controls="mobile-menu"><span aria-hidden="true">•••</span></button>
     </div>
   </div>
 </header>
@@ -48,6 +48,10 @@
   <a href="/about">シクッターとは</a>
   <a href="/guidelines">コミュニティガイドライン</a>
 </footer>
+<nav class="bottom-nav" aria-label="メインナビゲーション">
+  <a href="/" class="bottom-nav-link" data-bottom-home><span class="bottom-icon" aria-hidden="true">⌂</span><span>ホーム</span></a>
+  <a href="/post" class="bottom-nav-link bottom-post" data-post-entry><span class="bottom-icon" aria-hidden="true">＋</span><span>投稿</span></a>
+</nav>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 <script src="/app.js"></script>
 </body>

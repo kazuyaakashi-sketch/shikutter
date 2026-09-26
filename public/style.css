@@ -66,13 +66,13 @@ main.col{min-height:calc(100vh - var(--hd) - 80px);outline:none}
 /* ---------- ヘッダー ---------- */
 .hd{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
 .hd-in{max-width:var(--col);margin-inline:auto;height:var(--hd);display:flex;align-items:center;justify-content:space-between;gap:12px;padding-inline:16px}
-.brand{display:inline-flex;align-items:center;text-decoration:none;padding:7px 0;line-height:1}.brand img{display:block;width:168px;height:36px;object-fit:contain;object-position:left center}
+.brand{display:inline-flex;align-items:center;gap:9px;text-decoration:none;padding:7px 0;line-height:1;min-width:0}.brand img{display:block;width:36px;height:36px;border-radius:9px;object-fit:cover;flex:none}.brand-name{display:block;color:var(--ink);font-size:20px;font-weight:800;letter-spacing:.02em;white-space:nowrap;opacity:1}
 .hd-cta{min-height:36px;padding:0 16px;font-size:14px}
 .hd-cta::after{content:"";position:absolute;inset:-5px -2px}
 .hd-cta{position:relative}
 @media (min-width:700px){.hd-in{border-inline:1px solid transparent}}
 .hd-actions{display:flex;align-items:center;gap:8px}
-.menu-btn{display:none;width:40px;height:40px;border:0;border-radius:999px;background:none;color:var(--ink);font-size:18px;font-weight:800;letter-spacing:1px;align-items:center;justify-content:center}
+.menu-btn{display:none;width:40px;height:40px;border:0;border-radius:999px;background:none;color:var(--ink);font-size:18px;font-weight:800;letter-spacing:1px;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;line-height:1}.menu-btn span{display:block;white-space:nowrap;line-height:1;transform:translateY(-2px)}
 .menu-btn:hover{background:var(--hover)}
 .mobile-menu{display:none}
 .utility-nav{position:fixed;top:calc(var(--hd) + 28px);left:calc(50% + (var(--col) / 2) + 28px);width:210px;display:grid;gap:8px;color:var(--muted);font-size:12.5px;line-height:1.5}
@@ -82,7 +82,10 @@ main.col{min-height:calc(100vh - var(--hd) - 80px);outline:none}
 .utility-nav span{margin-top:4px}
 @media (max-width:1080px){.utility-nav{display:none}}
 @media (max-width:699px){
-  .brand img{width:142px;height:32px}
+  .hd-in{padding-inline:12px}
+  .brand{gap:8px}
+  .brand img{width:34px;height:34px;border-radius:8px}
+  .brand-name{font-size:18px}
   .hd-cta{display:none!important}
   .menu-btn{display:inline-flex}
   .mobile-menu{position:fixed;z-index:45;top:calc(var(--hd) + env(safe-area-inset-top,0px));right:10px;width:min(290px,calc(100vw - 20px));padding:6px;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(15,20,25,.12)}
@@ -330,3 +333,22 @@ details.more-fields>.inner{display:grid;gap:18px;padding:6px 0 8px}
 .login{display:grid;gap:12px;max-width:380px;padding:60px 16px 20px}
 .login h1{font-size:22px;font-weight:700}
 .err{color:var(--bad);font-size:13px;font-weight:700}
+
+
+/* ---------- スマホ下部ナビ ---------- */
+.bottom-nav{display:none}
+@media (max-width:699px){
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .ft{padding-bottom:24px}
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(58px + env(safe-area-inset-bottom,0px));padding:0 18px env(safe-area-inset-bottom,0px);background:color-mix(in srgb,var(--bg) 94%,transparent);border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .bottom-nav-link{display:flex;align-items:center;justify-content:center;gap:7px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;min-width:0}
+  .bottom-nav-link .bottom-icon{font-size:22px;line-height:1;color:var(--ink)}
+  .bottom-nav-link.bottom-post{color:var(--accent)}
+  .bottom-nav-link.bottom-post .bottom-icon{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:22px;font-weight:500}
+  .toast{bottom:calc(74px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:360px){
+  .brand-name{font-size:17px}
+  .hd-actions{gap:2px}
+  .menu-btn{width:36px;height:36px}
+}

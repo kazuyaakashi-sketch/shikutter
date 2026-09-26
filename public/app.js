@@ -306,13 +306,13 @@ function render(fromData) {
   else if (r.name === "about") renderAbout();
   else if (r.name === "guidelines") renderGuidelines();
   else renderNotFound();
-  if (r.name !== "detail") document.title = r.name === "home" ? "シクッター｜しくったら、シクッター。" : `${TITLES[r.name] || ""}｜シクッター`;
+  if (r.name !== "detail") document.title = r.name === "home" ? "シクッター｜しくじったら、シクッター。" : `${TITLES[r.name] || ""}｜シクッター`;
   if (r.name === "home" && Date.now() - S.loadedAt > 60000 && S.loaded && !fromData) loadFailures();
 }
 
 /* ============ ホーム ============ */
 function renderHome() {
-  const list = S.failures.filter((f) => S.filter === "all" || f.category === S.filter);
+  const list = S.failures.filter((f) => f.title !== "テスト投稿" && (S.filter === "all" || f.category === S.filter));
   let feed;
   if (!S.loaded) feed = `<div class="sk" aria-hidden="true"><i style="width:30%"></i><i style="width:80%"></i><i></i><i style="width:60%"></i></div>`.repeat(3) + `<p class="sr" role="status">読み込み中</p>`;
   else if (S.error && !S.failures.length) feed = `<div class="empty">読み込めませんでした。通信状況を確認してください。<button class="btn sec sm" data-reload>もう一度読み込む</button></div>`;
@@ -320,7 +320,7 @@ function renderHome() {
   else feed = list.map((f) => postHtml(f, "tl")).join("");
   $("#app").innerHTML = `
     <section class="lead">
-      <h1>しくったら、シクッター。</h1>
+      <h1>しくじったら、シクッター。</h1>
       <p>みんなの「しくった」を見たり、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。</p>
     </section>
     <div class="tabs" role="tablist" aria-label="ジャンル">
@@ -585,7 +585,7 @@ async function saveProfile(btn) {
 /* ============ 読み物ページ ============ */
 function renderAbout() {
   $("#app").innerHTML = `<article class="doc">
-    <h1>しくったら、シクッター。</h1>
+    <h1>しくじったら、シクッター。</h1>
     <p>シクッターは、失敗談を匿名でシェアする場所です。</p>
     <p>やらかした直後って、世界で自分だけがダメな気がします。でも、ほかの人の「しくった」を読んでいると、「みんな結構しくってるな」「それでも普通に生きてるな」と、ちょっとだけ気持ちが軽くなります。</p>
     <h2>成功談にしなくていい</h2>
