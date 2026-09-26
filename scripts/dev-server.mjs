@@ -15,7 +15,7 @@ if (process.env.DATABASE_URL) {
   const SIG = {
     list_failures: [], admin_list: [], admin_kpis: [], admin_hide_dummies: [], admin_delete_dummies: [],
     create_failure: ["p::jsonb", "raw::jsonb", "ip::text", "dev::text"], react: ["fid::text", "dev::text", "t::text", "on_::boolean", "ip::text"],
-    delete_own_failure: ["fid::text", "dev::text"],
+    delete_own_failure: ["fid::text", "dev::text"], set_own_profile: ["fid::text", "dev::text", "age::text", "job::text"],
     log_events: ["s::text", "dev::text", "rows::jsonb"], log_ai_call: ["ip::text"], admin_update: ["fid::text", "patch::jsonb"],
   };
   globalThis.__SHK_RPC__ = async (fn, args) => {
@@ -27,7 +27,8 @@ if (process.env.DATABASE_URL) {
   };
 }
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json" };
-const REWRITE = [/^\/post$/, /^\/preview$/, /^\/thanks$/, /^\/admin$/, /^\/failure\/[^/]+$/];
+// vercel.json の rewrites と同じ一覧にしておく
+const REWRITE = [/^\/post$/, /^\/preview$/, /^\/thanks$/, /^\/admin$/, /^\/about$/, /^\/guidelines$/, /^\/failure\/[^/]+$/];
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
@@ -40,7 +41,11 @@ http.createServer(async (req, res) => {
   }
   let p = url.pathname === "/" || REWRITE.some((r) => r.test(url.pathname)) ? "/index.html" : url.pathname;
   const file = path.join(root, "public", path.normalize(p));
-  if (!file.startsWith(path.join(root, "public")) || !fs.existsSync(file)) { res.statusCode = 404; return res.end("not found"); }
+  if (!file.startsWith(path.join(root, "public")) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    // Vercel と同じく、存在しないページは public/404.html を 404 で返す
+    res.statusCode = 404; res.setHeader("Content-Type", TYPES[".html"]);
+    return fs.createReadStream(path.join(root, "public", "404.html")).pipe(res);
+  }
   res.setHeader("Content-Type", TYPES[path.extname(file)] || "application/octet-stream");
   fs.createReadStream(file).pipe(res);
 }).listen(PORT, () => console.log(`http://localhost:${PORT}`));

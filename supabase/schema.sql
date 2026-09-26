@@ -59,7 +59,12 @@ create table if not exists failures (
   device_id           text
 );
 -- 既存環境（テーブルがすでにある場合）にも安全に列を追加する
-alter table failures add column if not exists device_id text;
+-- ※ create table if not exists は既存テーブルに新しい列を足さないので、後から使い始めた列はここでも追加する
+alter table failures add column if not exists device_id       text;
+alter table failures add column if not exists time_since      text;
+alter table failures add column if not exists current_comment text;
+alter table failures add column if not exists age_group       text;
+alter table failures add column if not exists occupation      text;
 
 create index if not exists failures_status_created on failures (status, created_at desc);
 create index if not exists failures_ip_device_created on failures (ip_hash, device_id, created_at);
@@ -251,6 +256,30 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+-- 投稿直後に、任意で年代・職業を追加する（投稿時の device_id と一致する場合のみ）
+create or replace function set_own_profile(fid text, dev text, age text, job text) returns jsonb
+language plpgsql as $$
+declare
+  n int;
+begin
+  if dev is null or dev = '' then
+    return jsonb_build_object('error', 'not_found');
+  end if;
+  if coalesce(age, '') not in ('', '10代', '20代', '30代', '40代', '50代以上', '秘密')
+     or coalesce(job, '') not in ('', '会社員', '学生', '経営者・フリーランス', 'その他', '秘密') then
+    return jsonb_build_object('error', 'bad_request');
+  end if;
+  update failures set
+    age_group  = coalesce(nullif(age, ''), age_group),
+    occupation = coalesce(nullif(job, ''), occupation)
+  where failure_id = fid and device_id = dev;
+  get diagnostics n = row_count;
+  if n = 0 then
+    return jsonb_build_object('error', 'not_found');
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- 行動ログ（1回50件まで、決まったイベント名だけ）
 create or replace function log_events(s text, dev text, rows jsonb) returns int
 language plpgsql as $$
@@ -264,7 +293,8 @@ begin
     'timeline_view','failure_impression','failure_open','failure_read',
     'reaction_laugh','reaction_same','reaction_support','category_filter',
     'post_start','post_step_complete','post_preview','post_complete',
-    'relief_answer','relief_dismiss','mood_answer','mood_dismiss'
+    'post_complete_view','post_complete_return_timeline',
+    'relief_prompt_view','relief_answer','relief_dismiss','mood_answer','mood_dismiss'
   );
   get diagnostics n = row_count;
   return n;
@@ -305,6 +335,9 @@ language sql stable as $$
       count(*) filter (where name = 'reaction_support')   as rsu,
       count(*) filter (where name = 'post_start')         as ps,
       count(*) filter (where name = 'post_complete')      as pc,
+      count(*) filter (where name = 'relief_prompt_view') as rv,
+      count(*) filter (where name = 'post_complete_view') as pcv,
+      count(*) filter (where name = 'post_complete_return_timeline') as pcr,
       max(props->>'v') filter (where name = 'relief_answer')             as relief,
       max((props->>'v')::numeric) filter (where name = 'mood_answer')    as mood
     from events
@@ -321,6 +354,9 @@ language sql stable as $$
     'post_start_sessions',  count(*) filter (where tl > 0 and ps > 0),
     'post_start_any',       count(*) filter (where ps > 0),
     'post_complete_sessions', count(*) filter (where ps > 0 and pc > 0),
+    'relief_views',         count(*) filter (where rv > 0),
+    'post_complete_views',  count(*) filter (where pcv > 0),
+    'post_complete_returns', count(*) filter (where pcr > 0),
     'relief_n',             count(relief),
     'relief_better',        count(*) filter (where relief = 'better'),
     'relief_same',          count(*) filter (where relief = 'same'),
@@ -371,7 +407,7 @@ declare f text;
 begin
   foreach f in array array[
     'list_failures()', 'create_failure(jsonb, jsonb, text, text)', 'react(text, text, text, boolean, text)',
-    'delete_own_failure(text, text)',
+    'delete_own_failure(text, text)', 'set_own_profile(text, text, text, text)',
     'log_events(text, text, jsonb)', 'log_ai_call(text)', 'admin_list()', 'admin_kpis()',
     'admin_update(text, jsonb)', 'admin_hide_dummies()', 'admin_delete_dummies()'
   ] loop

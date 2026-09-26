@@ -3,25 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>シクッター</title>
-<meta name="description" content="しくったら、シクッター。匿名で失敗談を読んだり、投稿したりできる場所です。">
-<meta property="og:title" content="シクッター">
-<meta property="og:description" content="しくったら、シクッター。みんなの「しくった」を読んで、まあ、生きてる。">
+<title>シクッター｜しくったら、シクッター。</title>
+<meta name="description" content="みんなの「しくった」を見て、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。匿名の失敗談SNS、シクッター。">
+<meta property="og:title" content="しくったら、シクッター。">
+<meta property="og:description" content="みんなの「しくった」を見て、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="シクッター">
+<meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#F2F3F5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111216" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%2315171C'/%3E%3Crect x='14' y='56' width='72' height='18' fill='%23FFD23F'/%3E%3Ctext x='50' y='70' font-size='58' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%23fff'%3E%E3%81%97%3C/text%3E%3C/svg%3E">
+<meta name="twitter:title" content="しくったら、シクッター。">
+<meta name="twitter:description" content="みんなの「しくった」を見て、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23D9381E'/%3E%3Ctext x='50' y='70' font-size='60' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%23fff'%3E%E3%81%97%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<!-- ドット文字はロゴ（シクッター）だけに使う。text= で必要な文字だけ読み込む -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&text=%E3%82%B7%E3%82%AF%E3%83%83%E3%82%BF%E3%83%BC&display=swap">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<div id="app" class="wrap"></div>
-<div id="relief" class="relief" hidden></div>
-<nav class="nav" aria-label="メインメニュー"><div class="nav-in" id="nav"></div></nav>
-<div id="toast" class="toast" hidden role="status"></div>
+<a class="skip" href="#app">本文へ移動</a>
+<header class="hd" id="hd">
+  <div class="hd-in">
+    <a class="brand" href="/" aria-label="シクッター（タイムラインへ）">シクッター</a>
+    <a class="btn hd-cta" href="/post" data-post-entry id="hd-cta">しくったを投稿</a>
+  </div>
+</header>
+<main id="app" class="col" tabindex="-1"></main>
+<footer class="ft col" id="ft">
+  <a href="/about">シクッターとは</a>
+  <a href="/guidelines">コミュニティガイドライン</a>
+</footer>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 <script src="/app.js"></script>
 </body>
 </html>

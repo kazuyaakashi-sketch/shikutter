@@ -95,8 +95,9 @@ export function cleanAnswers(a = {}) {
   };
   if (!out.loss_types.includes("お金")) out.loss_amount = "";
   if (!out.loss_types.includes("時間")) out.loss_time = "";
-  // 必須は「一言・何が起きた・絶望度・実際のヤバさ・今どうしてる・ジャンル」の核となる6問だけ。
-  // それ以外（心の声・失ったもの・いつの話？・状況・気づき・結末・今だから言える一言・年代/職業）は任意。
+  // サーバー側の必須は「一言・何が起きた・絶望度・実際のヤバさ・今どうしてる・ジャンル」の6つ。
+  // 画面では「で、結局どうなった？」(consequence) も必須にしているが、古い下書きでも投稿できるようサーバーでは任意のまま。
+  // 年代・職業は投稿後に /api/profile で任意に追加する（投稿フローでは聞かない）。
   const missing = [];
   if (!out.mistake_summary) missing.push("何をしくった？");
   if (!out.action) missing.push("何をして、どうなった？");
@@ -140,7 +141,7 @@ const endS = (x) => (x ? (/[。！？!?」…]$/.test(x) ? x : x + "。") : "");
 
 export function fallbackEdit(a) {
   const current_line = [a.current_status && a.current_status !== "その他" ? a.current_status + "。" : "", endS(a.current_comment)]
-    .filter(Boolean).join(" ") || "普通に生きてます。";
+    .filter(Boolean).join("") || "普通に生きてます。";
   return {
     title: endS(a.mistake_summary),
     hook: endS(a.mistake_summary),
@@ -204,7 +205,7 @@ export function buildSNS(p) {
   const story = p.story || [];
   const tk = p.tiktok && typeof p.tiktok === "object" ? { ...p.tiktok } : {
     HOOK: p.hook || p.title, SETUP: p.setup || "", MISTAKE: story[0] || "", REALIZATION: story.slice(1).join(" "),
-    INNER_VOICE: `「${p.inner_voice}」`, CONSEQUENCE: p.consequence_text || "", CURRENT_STATUS: p.current_line || "",
+    INNER_VOICE: p.inner_voice ? `「${p.inner_voice}」` : "", CONSEQUENCE: p.consequence_text || "", CURRENT_STATUS: p.current_line || "",
     ENDING: "まあ、生きてる。", CTA: "あなたの「しくった」も教えて。",
   };
   tk.DESPAIR = D; tk.ACTUAL_DAMAGE = Ac;
@@ -216,13 +217,13 @@ export function buildSNS(p) {
     if (car[3] != null) car[3] += `\n\n当時の絶望度\n${D}`;
     if (car[5] != null) car[5] = `実際のヤバさ\n${Ac}\n${car[5]}`;
   } else {
-    car = [p.hook || p.title, p.setup || "しくる前", story.join("\n"), `「${p.inner_voice}」\n\n当時の絶望度\n${D}`,
+    car = [p.hook || p.title, p.setup || "しくる前", story.join("\n"), `${p.inner_voice ? `「${p.inner_voice}」\n\n` : ""}当時の絶望度\n${D}`,
       `結局どうなった？\n${p.consequence_text || ""}`, `実際のヤバさ\n${Ac}`, `現在\n${p.current_line || ""}`, "まあ、生きてる。\n\nしくったら、シクッター。"];
   }
   const instagram_carousel = car.map((t, i) => `【${i + 1}枚目】\n${t}`).join("\n\n");
-  const x_post = p.x_post || [p.title, `「${p.inner_voice}」と思った。`, `当時の絶望度：${D}`, p.consequence_text,
+  const x_post = p.x_post || [p.title, p.inner_voice ? `「${p.inner_voice}」と思った。` : "", `当時の絶望度：${D}`, p.consequence_text,
     `実際のヤバさ：${Ac}`, p.current_line, "まあ、生きてる。"].filter(Boolean).join("\n");
-  const edited_story = [p.setup, ...story, `「${p.inner_voice}」`, `当時の絶望度 ${D}`, p.consequence_text,
+  const edited_story = [p.setup, ...story, p.inner_voice ? `「${p.inner_voice}」` : "", `当時の絶望度 ${D}`, p.consequence_text,
     `実際のヤバさ ${Ac}`, p.current_line, "まあ、生きてる。"].filter(Boolean).join("\n\n");
   return { tiktok_script, instagram_carousel, x_post, edited_story };
 }
