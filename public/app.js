@@ -16,22 +16,30 @@ const MOD = { unchecked: "未確認", approved: "公開OK", needs_fix: "要修�
 const RX = [["laugh", "😂", "笑った"], ["same", "🤝", "俺もある"], ["support", "🫂", "生きろ"]];
 const RELIEF_AFTER = 4;
 
-const STEPS = [
-  { key: "mistake_summary", q: "何をしくった？", hint: "まずは一言で教えて。", ex: "取引先50社に社内メールを誤送信した", type: "text", req: true, max: 60 },
-  { key: "context", q: "しくる前、何してた？", hint: "どんな状況だった？ ざっくりでOK。", ex: "新入社員で、社内向けの案内メールを作っていた", type: "area" },
-  { key: "action", q: "何をして、しくった？", ex: "宛先を確認せずに、取引先リストに一斉送信した", type: "area" },
-  { key: "result", q: "何が起きた？", ex: "社内向けの内容が、取引先約50社に届いた", type: "area" },
-  { key: "realization_moment", q: "「しくった」って気づいた瞬間は？", ex: "送信済みメールを見た瞬間、血の気が引いた。", type: "area" },
-  { key: "inner_voice", q: "その瞬間、頭に浮かんだ言葉は？", hint: "「終わった」「逃げたい」など、そのままでOK。", ex: "終わった。クビになる。", type: "text", req: true, max: 60 },
+// 必須は「一言・何が起きた・絶望度・実際のヤバさ・今どうしてる・ジャンル」の核となる6問だけ。
+// あとは「もっと話す？（任意）」セクションにまとめて、答えなくても投稿できるようにしている。
+const CORE_STEPS = [
+  { key: "mistake_summary", q: "何をしくった？", hint: "まずは一言で教えて。", ex: "取引先50社に社内メールを誤送信した", type: "text", req: true, max: 80 },
+  { key: "action", q: "何をして、どうなった？", hint: "状況や結果もまとめてでOK。", ex: "宛先を確認せずに一斉送信し、取引先約50社に社内向けの内容が届いた", type: "area", req: true, max: 400 },
   { key: "despair_score", q: "その瞬間、どれくらい終わったと思った？", type: "scale", scale: DESPAIR, req: true },
-  { key: "consequence", q: "で、結局どうなった？", hint: "怒られた、振られた、弁償した、意外と何もなかった等。", ex: "上司と一緒に謝罪した。大きな損害はなかった", type: "area" },
-  { key: "loss_types", q: "実際、何を失った？", hint: "いくつでも選べます。", type: "loss", req: true },
   { key: "actual_damage_score", q: "今振り返ると、実際どれくらいヤバかった？", type: "scale", scale: DAMAGE, req: true },
   { key: "current_status", q: "で、今どうしてる？", hint: "「普通に生きてる」だけで十分です。", type: "single", options: STATUS, req: true },
-  { key: "current_comment", q: "今だから言える一言ある？", hint: "なくても大丈夫。", ex: "宛先は2回見るようになりました", type: "area", max: 120 },
-  { key: "category", q: "どのジャンルのしくった？", type: "classify", req: true },
+  { key: "category", q: "どのジャンルのしくった？", type: "single", options: CATS, req: true },
+];
+const MID_STEP = { key: "_mid", type: "midpoint" };
+const OPTIONAL_STEPS = [
+  { key: "context", q: "しくる前、何してた？", hint: "どんな状況だった？ ざっくりでOK。任意です。", ex: "新入社員で、社内向けの案内メールを作っていた", type: "area", max: 400 },
+  { key: "result", q: "具体的に何が起きた？", hint: "任意です。", ex: "社内向けの内容が、取引先約50社に届いた", type: "area", max: 400 },
+  { key: "realization_moment", q: "「しくった」って気づいた瞬間は？", hint: "任意です。", ex: "送信済みメールを見た瞬間、血の気が引いた。", type: "area", max: 400 },
+  { key: "inner_voice", q: "その瞬間、頭に浮かんだ言葉は？", hint: "「終わった」「逃げたい」など、そのままでOK。任意です。", ex: "終わった。クビになる。", type: "text", max: 80 },
+  { key: "loss_types", q: "実際、何を失った？", hint: "いくつでも選べます。任意です。", type: "loss" },
+  { key: "time_since", q: "いつの話？", hint: "任意です。", type: "single", options: SINCE },
+  { key: "consequence", q: "で、結局どうなった？", hint: "怒られた、振られた、弁償した、意外と何もなかった等。任意です。", ex: "上司と一緒に謝罪した。大きな損害はなかった", type: "area", max: 400 },
+  { key: "current_comment", q: "今だから言える一言ある？", hint: "なくても大丈夫。", ex: "宛先は2回見るようになりました", type: "area", max: 160 },
   { key: "age_group", q: "最後に、よければ教えて", hint: "どちらも任意です。集計にだけ使い、投稿には表示しません。", type: "attrs" },
 ];
+const STEPS = [...CORE_STEPS, MID_STEP, ...OPTIONAL_STEPS];
+const CORE_LEN = CORE_STEPS.length;
 
 /* ============ ユーティリティ ============ */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -78,10 +86,10 @@ const S = {
 const MYPOSTS = new Set(loadLS("shk_mine") || []);
 const A = {
   imp: new Set(sessSaved.imp || []), read: new Set(sessSaved.read || []), open: new Set(sessSaved.open || []),
-  mood: sessSaved.mood || null, moodDismissed: !!sessSaved.moodDismissed,
+  mood: sessSaved.mood || null, moodDismissed: !!sessSaved.moodDismissed, moodExpanded: !!sessSaved.moodExpanded,
   reliefDone: !!sessSaved.reliefDone, reliefShown: false,
 };
-function saveSess() { saveSS("shk_sess", { imp: [...A.imp], read: [...A.read], open: [...A.open], mood: A.mood, moodDismissed: A.moodDismissed, reliefDone: A.reliefDone }); }
+function saveSess() { saveSS("shk_sess", { imp: [...A.imp], read: [...A.read], open: [...A.open], mood: A.mood, moodDismissed: A.moodDismissed, moodExpanded: A.moodExpanded, reliefDone: A.reliefDone }); }
 function saveDraft() { saveLS("shk_draft", S.draft); }
 
 /* ============ 計測 ============ */
@@ -225,9 +233,9 @@ function renderNav(n) {
 /* ============ ホーム ============ */
 function cardHtml(f) {
   return `<article class="card" data-fid="${h(f.id)}">
-    <div class="meta"><span class="cat">${h(f.category)}</span><span>·</span><span>${h(f.time_since || "")}の話</span>${MYPOSTS.has(f.id) ? '<span class="mine">あなたの投稿</span>' : ""}</div>
+    <div class="meta"><span class="cat">${h(f.category)}</span>${f.time_since ? `<span>·</span><span>${h(f.time_since)}の話</span>` : ""}${MYPOSTS.has(f.id) ? '<span class="mine">あなたの投稿</span>' : ""}</div>
     <h2 class="title"><a href="/failure/${encodeURIComponent(f.id)}">${h(f.title)}</a></h2>
-    <p class="voice"><mark>「${h(f.inner_voice)}」</mark></p>
+    ${f.inner_voice ? `<p class="voice"><mark>「${h(f.inner_voice)}」</mark></p>` : ""}
     <div class="scores">
       <span class="slbl">当時の絶望度</span>${stars(f.despair_score)}
       <span class="slbl">実際のヤバさ</span>${stars(f.actual_damage_score)}
@@ -254,9 +262,10 @@ function renderHome() {
     <div class="chips" role="group" aria-label="カテゴリー">
       ${["all", ...CATS].map((c) => `<button class="chip" data-filter="${c}" aria-pressed="${S.filter === c}">${c === "all" ? "すべて" : c}</button>`).join("")}
     </div>
-    ${showMood ? `<section class="mood" aria-label="今の気分">
-      <div class="mood-head"><span>今、どれくらい落ち込んでる？ <span class="mut" style="font-weight:400;font-size:12px">任意</span></span><button class="x" data-mood-x aria-label="閉じる">×</button></div>
-      <div class="scale5">${MOOD.map(([e, l], i) => `<button data-mood="${i + 1}" aria-label="${i + 1} ${l}">${e}<small>${l}</small></button>`).join("")}</div>
+    ${showMood ? `<section class="mood-bar${A.moodExpanded ? " open" : ""}" aria-label="今の気分">
+      <button class="mood-bar-q" data-mood-toggle aria-expanded="${!!A.moodExpanded}">😶 今、どれくらい落ち込んでる？<span class="mut" style="font-weight:400">任意</span></button>
+      <button class="x" data-mood-x aria-label="閉じる">×</button>
+      ${A.moodExpanded ? `<div class="scale5">${MOOD.map(([e, l], i) => `<button data-mood="${i + 1}" aria-label="${i + 1} ${l}">${e}<small>${l}</small></button>`).join("")}</div>` : ""}
     </section>` : ""}
     <section class="feed" aria-label="みんなのしくった">${feed}</section>
     <footer class="foot"><span>シクッター（テスト版）</span><span>失敗しても、いつもの自分に戻れる社会へ。</span></footer>`;
@@ -277,14 +286,15 @@ function renderDetail(id) {
   }).join("");
   const others = visible().filter((x) => x.id !== id && x.category === f.category).slice(0, 2);
   const d = +f.despair_score || 0, a = +f.actual_damage_score || 0;
+  const mine = MYPOSTS.has(id);
   $("#app").innerHTML = `
     <button class="back" data-back>← みんなのしくった</button>
     <article class="story">
-      <div class="meta"><span class="cat">${h(f.category)}</span>${(f.subcategory || []).map((s) => `<span>/ ${h(s)}</span>`).join("")}<span>·</span><span>${h(f.time_since)}の話</span></div>
+      <div class="meta"><span class="cat">${h(f.category)}</span>${(f.subcategory || []).map((s) => `<span>/ ${h(s)}</span>`).join("")}${f.time_since ? `<span>·</span><span>${h(f.time_since)}の話</span>` : ""}</div>
       <h1 class="title">${h(f.title)}</h1>
       ${f.setup ? `<p>${h(f.setup)}</p>` : ""}
       ${(f.story || []).map((p) => `<p>${h(p)}</p>`).join("")}
-      <p class="big-voice"><mark>「${h(f.inner_voice)}」</mark></p>
+      ${f.inner_voice ? `<p class="big-voice"><mark>「${h(f.inner_voice)}」</mark></p>` : ""}
       <div class="meter"><div class="row"><span class="slbl">当時の絶望度</span><span class="word">${DESPAIR[d - 1] ? DESPAIR[d - 1].join(" ") : ""}</span></div>${stars(d)}</div>
       ${f.consequence_text ? `<p>${h(f.consequence_text)}</p>` : ""}
       <div class="meter"><div class="row"><span class="slbl">実際のヤバさ</span><span class="word">${DAMAGE[a - 1] ? DAMAGE[a - 1].join(" ") : ""}</span></div>${stars(a)}${gapHtml(d, a)}</div>
@@ -294,6 +304,10 @@ function renderDetail(id) {
       ${rxHtml(f)}
       <span id="read-sentinel" style="display:block;height:1px"></span>
     </article>
+    ${mine ? `<div class="own-box">
+      <button class="btn ghost sm" data-delete-post="${h(id)}">この投稿を削除する</button>
+      <span class="mut" style="font-size:12px">削除すると元に戻せません。</span>
+    </div>` : ""}
     <div class="cta-box">
       <b>あなたも、しくった？</b>
       <span class="mut" style="font-size:14px">匿名で、一問一答で答えるだけ。読みやすい形にまとめて載せます。</span>
@@ -332,28 +346,34 @@ function answerRelief(v) {
 
 /* ============ 投稿フロー ============ */
 function stepValid(st) {
+  if (st.type === "midpoint") return true;
   const v = S.draft[st.key];
   if (!st.req) return true;
   if (st.type === "loss") return Array.isArray(v) && v.length > 0;
-  if (st.type === "classify") return !!S.draft.category && !!S.draft.time_since;
   if (st.type === "scale") return !!v;
   return v != null && String(v).trim() !== "";
 }
 function stepFilled(s) {
-  if (s.type === "classify") return !!S.draft.category;
+  if (s.type === "midpoint") return true;
   if (s.type === "attrs") return !!(S.draft.age_group || S.draft.occupation);
   const v = S.draft[s.key]; return Array.isArray(v) ? v.length > 0 : v != null && v !== "";
 }
 function opt(attr, val, pressed, label) { return `<button class="opt" ${attr}="${h(val)}" aria-pressed="${!!pressed}">${h(label || val)}</button>`; }
+function countCls(len, max) { const r = max ? len / max : 0; return r >= 1 ? "danger" : r >= 0.9 ? "warn" : ""; }
 function renderPost() {
   if (S.step < 0) return renderIntro();
-  const st = STEPS[S.step], n = S.step + 1, tot = STEPS.length, v = S.draft[st.key];
+  const st = STEPS[S.step];
+  if (st.type === "midpoint") return renderMidpoint();
+  const n = S.step + 1, tot = STEPS.length, v = S.draft[st.key];
   let body = "";
   if (st.type === "text") {
-    body = `<input id="in-${st.key}" class="field" type="text" maxlength="${st.max || 80}" value="${h(v || "")}" autocomplete="off" enterkeyhint="next" aria-label="${h(st.q)}">
-      <div class="count"><span id="cnt">${(v || "").length}</span>/${st.max || 80}</div>`;
+    const max = st.max || 80, len = (v || "").length;
+    body = `<input id="in-${st.key}" class="field" type="text" maxlength="${max}" value="${h(v || "")}" autocomplete="off" enterkeyhint="next" aria-label="${h(st.q)}">
+      <div class="count ${countCls(len, max)}"><span id="cnt">${len}</span>/${max}</div>`;
   } else if (st.type === "area") {
-    body = `<textarea id="in-${st.key}" class="field" maxlength="${st.max || 400}" aria-label="${h(st.q)}">${h(v || "")}</textarea>`;
+    const max = st.max || 400, len = (v || "").length;
+    body = `<textarea id="in-${st.key}" class="field" maxlength="${max}" aria-label="${h(st.q)}">${h(v || "")}</textarea>
+      <div class="count ${countCls(len, max)}"><span id="cnt">${len}</span>/${max}</div>`;
   } else if (st.type === "scale") {
     body = `<div class="bigscale" role="radiogroup">${st.scale.map(([e, l], i) => `<button class="opt" role="radio" data-scale="${i + 1}" aria-pressed="${v === i + 1}" aria-checked="${v === i + 1}"><span><span class="dot" style="font-size:18px;margin-right:10px">${i + 1}</span>${l}</span><span class="e">${e}</span></button>`).join("")}</div>`;
   } else if (st.type === "single") {
@@ -363,12 +383,9 @@ function renderPost() {
     body = `<div class="opts two">${LOSS.map((o) => opt("data-loss", o, sel.includes(o))).join("")}</div>
       ${sel.includes("お金") ? `<div class="sub"><label for="in-loss_amount">だいたいいくら？ <span class="mut" style="font-weight:400">任意</span></label><input id="in-loss_amount" class="field" type="text" placeholder="例：3万円くらい" value="${h(S.draft.loss_amount || "")}" maxlength="30"></div>` : ""}
       ${sel.includes("時間") ? `<div class="sub"><label for="in-loss_time">どれくらいの時間？ <span class="mut" style="font-weight:400">任意</span></label><input id="in-loss_time" class="field" type="text" placeholder="例：丸一日" value="${h(S.draft.loss_time || "")}" maxlength="30"></div>` : ""}`;
-  } else if (st.type === "classify") {
-    body = `<div class="grp"><h3>ジャンル</h3><div class="opts two">${CATS.map((o) => `<button class="opt" data-set="category" data-val="${o}" aria-pressed="${S.draft.category === o}">${o}</button>`).join("")}</div></div>
-      <div class="grp"><h3>いつの話？</h3><div class="opts two">${SINCE.map((o) => `<button class="opt" data-set="time_since" data-val="${o}" aria-pressed="${S.draft.time_since === o}">${o}</button>`).join("")}</div></div>`;
   } else if (st.type === "attrs") {
-    body = `<div class="grp"><h3>年代</h3><div class="opts two">${AGES.map((o) => `<button class="opt" data-set="age_group" data-val="${o}" aria-pressed="${S.draft.age_group === o}">${o}</button>`).join("")}</div></div>
-      <div class="grp"><h3>職業</h3><div class="opts two">${JOBS.map((o) => `<button class="opt" data-set="occupation" data-val="${o}" aria-pressed="${S.draft.occupation === o}">${o}</button>`).join("")}</div></div>`;
+    body = `<div class="grp"><h3>年代 ${S.draft.age_group ? "✓" : ""}</h3><div class="opts two">${AGES.map((o) => `<button class="opt" data-set="age_group" data-val="${o}" aria-pressed="${S.draft.age_group === o}">${o}</button>`).join("")}</div></div>
+      <div class="grp"><h3>職業 ${S.draft.occupation ? "✓" : ""}</h3><div class="opts two">${JOBS.map((o) => `<button class="opt" data-set="occupation" data-val="${o}" aria-pressed="${S.draft.occupation === o}">${o}</button>`).join("")}</div></div>`;
   }
   const last = S.step === STEPS.length - 1;
   $("#app").innerHTML = `
@@ -378,7 +395,7 @@ function renderPost() {
       <span class="stepn">${n}/${tot}</span>
     </div>
     <section class="qwrap">
-      <span class="qlabel">Q${n}</span>
+      <span class="qlabel">Q${n}${st.req ? "" : " ・ 任意"}</span>
       <h1 class="q">${h(st.q)}</h1>
       ${st.hint ? `<p class="hint">${h(st.hint)}</p>` : ""}
       ${body}
@@ -388,13 +405,15 @@ function renderPost() {
       ${st.req ? "<span></span>" : `<button class="linkbtn" data-step-next data-skip>${stepFilled(st) ? "" : "スキップ"}</button>`}
       <button class="btn" id="next-btn" data-step-next ${stepValid(st) ? "" : "disabled"}>${last ? "まとめて確認する" : "次へ"}</button>
     </div>
-    <div class="dots" aria-label="質問一覧">${STEPS.map((s, i) => `<button data-jump="${i}" class="${i === S.step ? "cur" : stepFilled(s) ? "done" : ""}" aria-label="Q${i + 1}へ">${i + 1}</button>`).join("")}</div>
+    <div class="dots" aria-label="質問一覧">${(() => { let qn = 0; return STEPS.map((s, i) => { if (s.type === "midpoint") return ""; qn++; return `<button data-jump="${i}" class="${i === S.step ? "cur" : stepFilled(s) ? "done" : ""}" aria-label="Q${qn}へ">${qn}</button>`; }).join(""); })()}</div>
     <p class="mut" style="font-size:12px;margin-top:14px">本名・会社名・学校名などは書かなくて大丈夫。書いてしまっても、見つけたものは公開前に自動で伏せます。</p>`;
   const inp = $("#app .field");
   if (inp && (st.type === "text" || st.type === "area")) {
     inp.addEventListener("input", () => {
       S.draft[st.key] = inp.value; saveDraft();
+      const max = st.max || (st.type === "text" ? 80 : 400);
       const c = $("#cnt"); if (c) c.textContent = inp.value.length;
+      const cw = $(".count"); if (cw) cw.className = "count " + countCls(inp.value.length, max);
       $("#next-btn").disabled = !stepValid(st);
       const sk = $("[data-skip]"); if (sk) sk.textContent = inp.value ? "" : "スキップ";
     });
@@ -402,6 +421,24 @@ function renderPost() {
     setTimeout(() => inp.focus({ preventScroll: true }), 50);
   }
   ["loss_amount", "loss_time"].forEach((k) => { const el = $("#in-" + k); if (el) el.addEventListener("input", () => { S.draft[k] = el.value; saveDraft(); }); });
+}
+function renderMidpoint() {
+  const n = S.step + 1, tot = STEPS.length;
+  $("#app").innerHTML = `
+    <div class="stepbar">
+      <button class="iconbtn" data-step-back aria-label="前の質問へ">←</button>
+      <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${n}"><i style="width:${(n / tot) * 100}%"></i></div>
+      <span class="stepn">${n}/${tot}</span>
+    </div>
+    <section class="qwrap">
+      <span class="qlabel">あと少し</span>
+      <h1 class="q">ここまでで投稿できます。</h1>
+      <p class="hint">もう少し詳しく書きますか？ 書くほど内容に厚みが出ますが、どちらも任意です。</p>
+    </section>
+    <div class="actions" style="flex-direction:column;align-items:stretch;gap:10px">
+      <button class="btn" data-mid-finish>このまま投稿する</button>
+      <button class="btn ghost" data-mid-more>もう少し書く（任意の質問へ）</button>
+    </div>`;
 }
 function renderIntro() {
   $("#app").innerHTML = `
@@ -455,40 +492,41 @@ async function generate() {
   S.preview = res;
   go("/preview");
 }
+function pencil(key) { return `<button class="pencil" data-editstep="${h(key)}" aria-label="この項目を直す">✏️編集</button>`; }
 function renderPreview() {
   if (!S.preview) { S.step = Math.max(0, S.step); return go("/post", true); }
   track("post_preview");
   const d = S.draft, p = S.preview.edited, pii = p.pii || [];
   $("#app").innerHTML = `
     <h1 class="pv-h">あなたの「しくった」をまとめました。</h1>
-    <p class="mut" style="font-size:14px;margin-bottom:14px">この内容で公開されます。気になるところは「修正する」で答えを直してください。</p>
+    <p class="mut" style="font-size:14px;margin-bottom:14px">この内容で公開されます。気になるところは項目横の「✏️編集」で答えを直してください。</p>
     <div style="display:grid;gap:10px;margin-bottom:14px">
       ${pii.length ? `<div class="note"><b>🔒 特定につながりそうな言葉を置き換えました</b>${pii.slice(0, 6).map((x) => `<span>「${h(x.from)}」→「${h(x.to)}」</span>`).join("")}</div>` : `<div class="note"><b>🔒 個人を特定できそうな情報は見つかりませんでした</b></div>`}
       ${p.moderation && p.moderation.ok === false ? `<div class="note warn"><b>運営が確認してから公開します</b><span>${h(p.moderation.reason || "内容の確認が必要です")}</span></div>` : ""}
       ${S.preview.note ? `<div class="note"><span>${h(S.preview.note)}</span></div>` : ""}
     </div>
     <article class="story">
-      <div class="meta"><span class="cat">${h(d.category)}</span>${(p.subcategory || []).map((s) => `<span>/ ${h(s)}</span>`).join("")}<span>·</span><span>${h(d.time_since)}の話</span></div>
-      <h2 class="title">${h(p.title)}</h2>
-      ${p.setup ? `<p>${h(p.setup)}</p>` : ""}
-      ${(p.story || []).map((x) => `<p>${h(x)}</p>`).join("")}
-      <p class="big-voice"><mark>「${h(p.inner_voice)}」</mark></p>
-      <div class="meter"><span class="slbl">当時の絶望度</span>${stars(d.despair_score)}</div>
-      ${p.consequence_text ? `<p>${h(p.consequence_text)}</p>` : ""}
-      <div class="meter"><span class="slbl">実際のヤバさ</span>${stars(d.actual_damage_score)}${gapHtml(d.despair_score, d.actual_damage_score)}</div>
-      <p class="after">${h(p.current_line)}</p>
+      <div class="meta"><span class="cat">${h(d.category)}</span>${(p.subcategory || []).map((s) => `<span>/ ${h(s)}</span>`).join("")}${d.time_since ? `<span>·</span><span>${h(d.time_since)}の話</span>` : ""}${pencil("category")}</div>
+      <h2 class="title">${h(p.title)}${pencil("mistake_summary")}</h2>
+      ${p.setup ? `<p>${h(p.setup)}${pencil("context")}</p>` : ""}
+      ${(p.story || []).map((x) => `<p>${h(x)}</p>`).join("")}${(p.story || []).length ? pencil("action") : ""}
+      ${p.inner_voice ? `<p class="big-voice"><mark>「${h(p.inner_voice)}」</mark>${pencil("inner_voice")}</p>` : ""}
+      <div class="meter"><span class="slbl">当時の絶望度</span>${stars(d.despair_score)}${pencil("despair_score")}</div>
+      ${p.consequence_text ? `<p>${h(p.consequence_text)}${pencil("consequence")}</p>` : ""}
+      <div class="meter"><span class="slbl">実際のヤバさ</span>${stars(d.actual_damage_score)}${gapHtml(d.despair_score, d.actual_damage_score)}${pencil("actual_damage_score")}</div>
+      <p class="after">${h(p.current_line)}${pencil("current_status")}</p>
       <p class="close">まあ、生きてる。</p>
     </article>
     <div class="pv-actions">
-      <button class="btn ghost" data-edit>修正する</button>
+      <button class="btn ghost" data-edit>最初の質問から直す</button>
       <button class="btn mark" data-publish>この内容で投稿する</button>
     </div>
-    <p class="mut" style="font-size:12px">「修正する」で質問に戻れます。答えを直すと、もう一度まとめ直します。</p>`;
+    <p class="mut" style="font-size:12px">項目横の「✏️編集」で、その質問へ直接戻れます。答えを直すと、もう一度まとめ直します。</p>`;
 }
 async function publish(btn) {
   btn.disabled = true; btn.textContent = "投稿しています…";
   try {
-    const r = await api("/api/post", { method: "POST", body: { answers: S.draft, edited_json: S.preview.edited_json, sig: S.preview.sig } });
+    const r = await api("/api/post", { method: "POST", body: { answers: S.draft, edited_json: S.preview.edited_json, sig: S.preview.sig, device_id: DEVICE } });
     MYPOSTS.add(r.id); saveLS("shk_mine", [...MYPOSTS]);
     track("post_complete", r.id, { status: r.status });
     flush();
@@ -626,10 +664,11 @@ document.addEventListener("click", async (e) => {
   if ("reload" in ds) { S.loaded = false; renderHome(); return loadFailures(); }
   if (ds.mood) {
     A.mood = +ds.mood; track("mood_answer", "", { v: A.mood });
-    const m = $(".mood"); if (m) { m.innerHTML = `<div class="mood-head"><span>ありがとう。気楽に眺めていってください。</span></div>`; setTimeout(() => m.remove(), 1800); }
+    const m = $(".mood-bar"); if (m) { m.innerHTML = `<span>ありがとう。気楽に眺めていってください。</span>`; setTimeout(() => m.remove(), 1800); }
     return;
   }
-  if ("moodX" in ds) { A.moodDismissed = true; track("mood_dismiss"); const m = $(".mood"); if (m) m.remove(); return; }
+  if ("moodToggle" in ds) { A.moodExpanded = !A.moodExpanded; saveSess(); return renderHome(); }
+  if ("moodX" in ds) { A.moodDismissed = true; track("mood_dismiss"); const m = $(".mood-bar"); if (m) m.remove(); return; }
   if (ds.relief) return answerRelief(ds.relief);
   if ("reliefX" in ds) { $("#relief").hidden = true; if (!A.reliefDone) { A.reliefDone = true; track("relief_dismiss"); } return; }
   if ("back" in ds) { if (S.navCount > 0) history.back(); else go("/"); return; }
@@ -637,9 +676,27 @@ document.addEventListener("click", async (e) => {
   if ("resetDraft" in ds) { S.draft = {}; saveDraft(); return renderIntro(); }
   if ("stepBack" in ds) { S.step = S.step <= 0 ? -1 : S.step - 1; return renderPost(); }
   if ("stepNext" in ds) return nextStep();
+  if ("midFinish" in ds) { track("post_step_complete", "", { step: "_mid", n: S.step + 1 }); return generate(); }
+  if ("midMore" in ds) { S.step++; renderPost(); window.scrollTo(0, 0); return; }
+  if (ds.editstep) {
+    const idx = STEPS.findIndex((s) => s.key === ds.editstep);
+    if (idx >= 0) { S.step = idx; S.preview = null; go("/post"); }
+    return;
+  }
+  if (ds.deletePost) {
+    if (!confirm("この投稿を削除します。元に戻せません。よろしいですか？")) return;
+    try {
+      await api("/api/delete", { method: "POST", body: { id: ds.deletePost, device_id: DEVICE } });
+      MYPOSTS.delete(ds.deletePost); saveLS("shk_mine", [...MYPOSTS]);
+      S.failures = S.failures.filter((x) => x.id !== ds.deletePost);
+      toast("投稿を削除しました");
+      go("/", true);
+    } catch (err) { toast("削除できませんでした。もう一度お試しください。"); }
+    return;
+  }
   if (ds.jump) { const j = +ds.jump; if (j <= S.step || STEPS.slice(0, j).every(stepValid)) { S.step = j; renderPost(); } else toast("先に必須の質問に答えてください"); return; }
-  if (ds.scale) { const st = STEPS[S.step]; S.draft[st.key] = +ds.scale; saveDraft(); renderPost(); return setTimeout(nextStep, 220); }
-  if (ds.single) { const st = STEPS[S.step]; S.draft[st.key] = ds.single; saveDraft(); renderPost(); return setTimeout(nextStep, 220); }
+  if (ds.scale) { const st = STEPS[S.step]; S.draft[st.key] = +ds.scale; saveDraft(); return renderPost(); }
+  if (ds.single) { const st = STEPS[S.step]; S.draft[st.key] = ds.single; saveDraft(); return renderPost(); }
   if (ds.loss) {
     let v = S.draft.loss_types || []; const o = ds.loss;
     if (o === "特になし") v = v.includes(o) ? [] : [o];

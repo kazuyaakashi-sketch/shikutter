@@ -14,7 +14,8 @@ if (process.env.DATABASE_URL) {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
   const SIG = {
     list_failures: [], admin_list: [], admin_kpis: [], admin_hide_dummies: [], admin_delete_dummies: [],
-    create_failure: ["p::jsonb", "raw::jsonb", "ip::text"], react: ["fid::text", "dev::text", "t::text", "on_::boolean", "ip::text"],
+    create_failure: ["p::jsonb", "raw::jsonb", "ip::text", "dev::text"], react: ["fid::text", "dev::text", "t::text", "on_::boolean", "ip::text"],
+    delete_own_failure: ["fid::text", "dev::text"],
     log_events: ["s::text", "dev::text", "rows::jsonb"], log_ai_call: ["ip::text"], admin_update: ["fid::text", "patch::jsonb"],
   };
   globalThis.__SHK_RPC__ = async (fn, args) => {

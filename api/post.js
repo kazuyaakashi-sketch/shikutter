@@ -5,6 +5,7 @@ import { rpc, send, readBody, ipHash, cleanAnswers, verify, buildSNS } from "./_
 export default async function handler(req, res) {
   if (req.method !== "POST") return send(res, 405, { error: "method_not_allowed" });
   const body = await readBody(req);
+  const dev = String(body.device_id || "").slice(0, 64);
   const { answers: a, missing } = cleanAnswers(body.answers);
   if (missing.length) return send(res, 400, { error: "missing", missing });
   if (typeof body.edited_json !== "string" || !verify(body.edited_json, body.sig)) {
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
     current_comment: a.current_comment, loss_amount: a.loss_amount, loss_time: a.loss_time,
   };
   try {
-    const r = await rpc("create_failure", { p: doc, raw, ip: ipHash(req) });
+    const r = await rpc("create_failure", { p: doc, raw, ip: ipHash(req), dev: /^[A-Za-z0-9_-]{8,64}$/.test(dev) ? dev : null });
     if (r?.error === "rate_limited") return send(res, 429, { error: "rate_limited" });
     return send(res, 200, { id: r.id, status: r.status });
   } catch (e) {

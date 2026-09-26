@@ -55,9 +55,15 @@ create table if not exists failures (
   support_count       int not null default 0,
   -- 管理
   is_dummy            boolean not null default false,
-  ip_hash             text
+  ip_hash             text,
+  device_id           text
 );
+-- 既存環境（テーブルがすでにある場合）にも安全に列を追加する
+alter table failures add column if not exists device_id text;
+
 create index if not exists failures_status_created on failures (status, created_at desc);
+create index if not exists failures_ip_device_created on failures (ip_hash, device_id, created_at);
+create index if not exists failures_device on failures (device_id);
 
 -- ---------- ユーザー原文（管理画面だけで使う） ----------
 create table if not exists failure_raw (
@@ -159,14 +165,18 @@ language sql stable as $$
   ) x
 $$;
 
--- 投稿（1時間に5件まで / IP）
-create or replace function create_failure(p jsonb, raw jsonb, ip text) returns jsonb
+-- 既存デプロイからの更新用: 旧シグネチャ（引数3つ）が残っていれば削除してから作り直す
+drop function if exists create_failure(jsonb, jsonb, text);
+
+-- 投稿（1時間に5件まで / 同じ ip_hash + device_id の組み合わせ）
+create or replace function create_failure(p jsonb, raw jsonb, ip text, dev text default null) returns jsonb
 language plpgsql as $$
 declare
   n   int;
   fid text;
 begin
-  select count(*) into n from failures where ip_hash = ip and created_at > now() - interval '1 hour';
+  select count(*) into n from failures
+  where ip_hash = ip and device_id is not distinct from dev and created_at > now() - interval '1 hour';
   if n >= 5 then
     return jsonb_build_object('error', 'rate_limited');
   end if;
@@ -177,7 +187,7 @@ begin
     despair_score, actual_damage_score, loss_types, loss_amount, loss_time,
     current_status, current_comment, category, subcategory, time_since, age_group, occupation,
     pii_detected, pii_removed, moderation_status, moderation_note, ai_used,
-    status, published_at, ip_hash
+    status, published_at, ip_hash, device_id
   )
   select
     r.title, r.hook, r.setup, coalesce(r.story, '[]'::jsonb), r.inner_voice, r.consequence_text, r.current_line, r.edited_story,
@@ -187,7 +197,7 @@ begin
     coalesce(r.pii_detected, false), coalesce(r.pii_removed, '[]'::jsonb), coalesce(r.moderation_status, 'unchecked'), r.moderation_note, coalesce(r.ai_used, false),
     coalesce(r.status, 'published'),
     case when coalesce(r.status, 'published') = 'published' then now() else null end,
-    ip
+    ip, dev
   from jsonb_populate_record(null::failures, p) r
   returning failure_id into fid;
 
@@ -200,7 +210,7 @@ begin
   return jsonb_build_object('id', fid, 'status', coalesce(p->>'status', 'published'));
 end $$;
 
--- リアクション（on=true で付ける / false で外す）。1時間に300回まで / IP
+-- リアクション（on=true で付ける / false で外す）。1時間に300回まで / 同じ ip_hash + device_id の組み合わせ
 create or replace function react(fid text, dev text, t text, on_ boolean, ip text) returns jsonb
 language plpgsql as $$
 declare
@@ -210,7 +220,7 @@ begin
     return jsonb_build_object('error', 'not_found');
   end if;
   if on_ then
-    select count(*) into n from reactions where ip_hash = ip and created_at > now() - interval '1 hour';
+    select count(*) into n from reactions where ip_hash = ip and device_id = dev and created_at > now() - interval '1 hour';
     if n >= 300 then
       return jsonb_build_object('error', 'rate_limited');
     end if;
@@ -222,6 +232,23 @@ begin
   end if;
   return (select jsonb_build_object('laugh', laugh_count, 'same', same_count, 'support', support_count)
           from failures where failure_id = fid);
+end $$;
+
+-- 自分の投稿を削除（投稿時に記録した device_id と一致する場合のみ、物理削除）
+create or replace function delete_own_failure(fid text, dev text) returns jsonb
+language plpgsql as $$
+declare
+  ok boolean;
+begin
+  select exists(
+    select 1 from failures
+    where failure_id = fid and device_id is not distinct from dev and dev is not null and dev <> ''
+  ) into ok;
+  if not ok then
+    return jsonb_build_object('error', 'not_found');
+  end if;
+  delete from failures where failure_id = fid and device_id is not distinct from dev;
+  return jsonb_build_object('ok', true);
 end $$;
 
 -- 行動ログ（1回50件まで、決まったイベント名だけ）
@@ -258,7 +285,7 @@ end $$;
 create or replace function admin_list() returns jsonb
 language sql stable as $$
   select coalesce(jsonb_agg(
-           (to_jsonb(f) - 'ip_hash') || jsonb_build_object('id', f.failure_id, 'raw', to_jsonb(r) - 'failure_id')
+           (to_jsonb(f) - 'ip_hash' - 'device_id') || jsonb_build_object('id', f.failure_id, 'raw', to_jsonb(r) - 'failure_id')
            order by f.created_at desc), '[]'::jsonb)
   from failures f
   left join failure_raw r using (failure_id)
@@ -316,7 +343,7 @@ begin
     published_at      = case when coalesce(patch->>'status', status) = 'published' and published_at is null
                              then now() else published_at end
   where failure_id = fid;
-  return (select (to_jsonb(f) - 'ip_hash') || jsonb_build_object('id', f.failure_id) from failures f where failure_id = fid);
+  return (select (to_jsonb(f) - 'ip_hash' - 'device_id') || jsonb_build_object('id', f.failure_id) from failures f where failure_id = fid);
 end $$;
 
 -- 管理画面：ダミーをまとめて非公開 / 削除
@@ -343,7 +370,8 @@ do $$
 declare f text;
 begin
   foreach f in array array[
-    'list_failures()', 'create_failure(jsonb, jsonb, text)', 'react(text, text, text, boolean, text)',
+    'list_failures()', 'create_failure(jsonb, jsonb, text, text)', 'react(text, text, text, boolean, text)',
+    'delete_own_failure(text, text)',
     'log_events(text, text, jsonb)', 'log_ai_call(text)', 'admin_list()', 'admin_kpis()',
     'admin_update(text, jsonb)', 'admin_hide_dummies()', 'admin_delete_dummies()'
   ] loop

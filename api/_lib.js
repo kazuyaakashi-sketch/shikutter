@@ -95,15 +95,15 @@ export function cleanAnswers(a = {}) {
   };
   if (!out.loss_types.includes("お金")) out.loss_amount = "";
   if (!out.loss_types.includes("時間")) out.loss_time = "";
+  // 必須は「一言・何が起きた・絶望度・実際のヤバさ・今どうしてる・ジャンル」の核となる6問だけ。
+  // それ以外（心の声・失ったもの・いつの話？・状況・気づき・結末・今だから言える一言・年代/職業）は任意。
   const missing = [];
   if (!out.mistake_summary) missing.push("何をしくった？");
-  if (!out.inner_voice) missing.push("心の声");
+  if (!out.action) missing.push("何をして、どうなった？");
   if (!out.despair_score) missing.push("当時の絶望度");
-  if (!out.loss_types.length) missing.push("失ったもの");
   if (!out.actual_damage_score) missing.push("実際のヤバさ");
   if (!out.current_status) missing.push("今どうしてる？");
   if (!out.category) missing.push("ジャンル");
-  if (!out.time_since) missing.push("いつの話？");
   return { answers: out, missing };
 }
 
