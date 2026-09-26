@@ -284,6 +284,9 @@ window.addEventListener("popstate", () => {
 const TITLES = { post: "しくったを投稿", preview: "投稿の確認", thanks: "しくった認定", about: "シクッターとは", guidelines: "コミュニティガイドライン", admin: "運営管理", notfound: "ページが見つかりません" };
 function render(fromData) {
   const r = route();
+  const mm = $("#mobile-menu"), mb = $("#menu-btn");
+  if (mm) mm.hidden = true;
+  if (mb) { mb.setAttribute("aria-expanded", "false"); mb.setAttribute("aria-label", "メニューを開く"); }
   if (r.name !== S.lastRoute) {
     S.lastRoute = r.name;
     if (r.name === "home") track("timeline_view");
@@ -318,7 +321,7 @@ function renderHome() {
   $("#app").innerHTML = `
     <section class="lead">
       <h1>しくったら、シクッター。</h1>
-      <p>みんなの「しくった」を見て、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。</p>
+      <p>みんなの「しくった」を見たり、あなたの「しくった」を投稿して、ちょっとだけ気持ちを軽くしよう。</p>
     </section>
     <div class="tabs" role="tablist" aria-label="ジャンル">
       ${TABS.map(([v, l]) => `<button type="button" class="tab" role="tab" id="tab-${h(v)}" data-filter="${h(v)}" aria-selected="${S.filter === v}" aria-controls="feed" tabindex="${S.filter === v ? 0 : -1}">${h(l)}</button>`).join("")}
@@ -741,6 +744,14 @@ document.addEventListener("click", async (e) => {
   if (ds.rx) { e.preventDefault(); return toggleReact(ds.fid, ds.rx, t); }
   if ("postEntry" in ds) { S.step = 0; }
   if ("return" in ds) { track("post_complete_return_timeline", S.lastPosted && S.lastPosted.id); flush(); }
+  if (t.id === "menu-btn") {
+    const menu = $("#mobile-menu"); if (!menu) return;
+    const open = menu.hidden;
+    menu.hidden = !open;
+    t.setAttribute("aria-expanded", String(open));
+    t.setAttribute("aria-label", open ? "メニューを閉じる" : "メニューを開く");
+    return;
+  }
   // 内部リンク
   if (t.tagName === "A" && t.getAttribute("href") && t.getAttribute("href").startsWith("/") && !t.target && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
     e.preventDefault();
