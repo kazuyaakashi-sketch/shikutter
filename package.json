@@ -1,0 +1,10 @@
+{
+  "name": "shikutter",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs"
+  }
+}
